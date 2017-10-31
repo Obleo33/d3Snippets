@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>US map with zoom/title>
+    <style type="text/css">
+      body {
+          background: rgba(16, 35, 37, 1.0);
+          color: rgba(110,218,231,0.4);
+          text-align: center;
+      }
+      
+      .state {
+          fill: rgba(98,130,137,0.2);
+          stroke: rgba(110,218,231,0.4);
+          stroke-width: 0.25px;
+          stroke-linejoin: round;
+          stroke-linecap: round;
+      }
+
+      .city-point {
+          fill: lime;
+      }
+    </style>
+</head>
+<body>
+  <h1>D3.js US map with zoom</h1>
+    <div id="map-container"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/topojson.v1.js"></script>
+    <script>
+    
+      var width = 1024,
+          height = 586,
+          map,
+          projection,
+          path,
+          zoom,
+          statesGroup,
+          citiesGroup;
+          
+      function initiateMap(){
+        //  The projection is used to project geographical coordinates on the SVG
+        projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(width);
+        
+        //  Path is the conversion of geographical shapes (states) to a SVG path 
+        path = d3.geoPath().projection(projection);
+        
+        //  Map is the SVG which everything is drawn on.
+        map = d3.select("#map-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+                
+        //  StatesGroup is the SVG group where the states paths reside         
+        statesGroup = map.append('g').attr("class", "states");
+        
+        //  Load state information to create individual state paths
+        d3.json("us-states.json", function (error, us) {
+            if (error) throw error;
+            statesGroup.selectAll("path")
+                .data(topojson.feature(us, us.objects.states).features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("class", "state");
+        }); 
+        
+        //  D3 zoom behavior that calls the function zoomed when the 
+        //  zoom action is complete, i.e. for every zoom step
+        zoom = d3.zoom().on("zoom", zoomed);
+        
+        //  Append the zoom behavior to the map
+        map.call(zoom);
+        
+        //  Initiate the zoom to center the map to avoid jumping on first use
+        map.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+        
+        map.on('click', resetZoom);
+      }
+      initiateMap();
+
+      function zoomed() {
+        //  Adjust the projection per the zoom event
+        projection.translate([d3.event.transform.x, d3.event.transform.y])
+                  .scale(width * d3.event.transform.k);
+        
+        //  Apply zoom to the states via the projection dependent path          
+        statesGroup.selectAll("path").attr("d", path);
+      }
+      
+      function resetZoom(){
+        map.call( zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2) );
+      }
+    </script>
+</body>
+</html>

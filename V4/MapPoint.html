@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>US Map</title>
+    <style type="text/css">
+        body{
+            background: rgba(16, 35, 37, 1.0);
+            text-align: center;
+            color: rgba(110,218,231,0.4);
+        }
+        .state{
+            fill: rgba(98,130,137,0.2);
+            stroke: rgba(110,218,231,0.4);
+            stroke-width: 0.25px;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+    </style>
+  </head>
+
+  <body>
+    <h1>D3js map with data point</h1>
+    <div id="map-container"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/topojson.v1.js"></script>
+    <script>
+        var width = 1024, height = 586;
+        
+        var projection = d3.geoAlbersUsa();
+        var svg = d3.select("#map-container").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+        
+        var path = d3.geoPath().projection(projection);
+
+        d3.json("us-states.json", function(error, us) {
+            if (error) throw error;
+        
+                svg.append("g")
+                    .attr("class", "states")
+                    .selectAll("path")
+                    .data(topojson.feature(us, us.objects.states).features)
+                    .enter().append("path")
+                            .attr("d", path)
+                            .attr("class", "state");
+        });
+
+        var denver = [-104.881105, 39.76185];
+        var pointCenter = projection(denver);
+
+        svg.append("circle")
+            .attr("fill", "lime")
+            .attr("r", 10)
+            .attr("cx", pointCenter[0])
+            .attr("cy", pointCenter[1]);
+
+    </script>
+  </body>
+
+</html>

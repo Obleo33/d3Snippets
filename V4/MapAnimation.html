@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>US map with animation</title>
+    <style type="text/css">
+      body {
+          background: rgba(16, 35, 37, 1.0);
+          color: rgba(110,218,231,0.4);
+          text-align: center;
+      }
+      
+      .state {
+          fill: rgba(98,130,137,0.2);
+          stroke: rgba(110,218,231,0.4);
+          stroke-width: 0.25px;
+          stroke-linejoin: round;
+          stroke-linecap: round;
+      }
+
+      .city-point {
+          fill: lime;
+      }
+    </style>
+</head>
+<body>
+  <h1>D3 js US map with animation</h1>
+    <div id="map-container"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/topojson.v1.js"></script>
+    <script>
+    
+      var width = 1024,
+          height = 586,
+          map,
+          projection,
+          path,
+          zoom,
+          statesGroup,
+          citiesGroup;
+          
+      function initiateMap(){
+        //  The projection is used to project geographical coordinates on the SVG
+        projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(width);
+        
+        //  Path is the conversion of geographical shapes (states) to a SVG path 
+        path = d3.geoPath().projection(projection);
+        
+        //  Map is the SVG which everything is drawn on.
+        map = d3.select("#map-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+                
+        //  StatesGroup is the SVG group where the states paths reside         
+        statesGroup = map.append('g').attr("class", "states");
+        
+        //  Load state information to create individual state paths
+        d3.json("us-states.json", function (error, us) {
+            if (error) throw error;
+            statesGroup.selectAll("path")
+                .data(topojson.feature(us, us.objects.states).features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("class", "state")
+                .attr("opacity", 0.0);
+              
+            statesGroup.selectAll(".state").each(function(){
+              d3.select(this).transition()
+                    .delay(Math.random() * 2500)
+                    .duration(Math.random() * 1000)
+                    .attr("opacity", 1.0);
+            });
+        });
+      }
+      initiateMap();
+
+    </script>
+</body>
+</html>

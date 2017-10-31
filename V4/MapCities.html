@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>US map with cities</title>
+    <style type="text/css">
+        body {
+            background: rgba(16, 35, 37, 1.0);
+        }
+
+        .state {
+            fill: rgba(98,130,137,0.2);
+            stroke: rgba(110,218,231,0.4);
+            stroke-width: 0.25px;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        .city-point {
+            fill: lime;
+        }
+    </style>
+</head>
+<body>
+    <h1>D3.js US map with cities</h1>
+    <div id="map-container"></div>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/topojson.v1.js"></script>
+    <script>
+    
+      var width = 1024,
+          height = 586,
+          map,
+          projection,
+          path,
+          zoom,
+          statesGroup,
+          citiesGroup;
+          
+      function initiateMap(){
+        //  The projection is used to project geographical coordinates on the SVG
+        projection = d3.geoAlbersUsa().translate([width / 2, height / 2]).scale(width);
+        
+        //  Path is the conversion of geographical shapes (states) to a SVG path 
+        path = d3.geoPath().projection(projection);
+        
+        //  Map is the SVG which everything is drawn on.
+        map = d3.select("#map-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+                
+        //  StatesGroup is the SVG group where the states paths reside         
+        statesGroup = map.append('g').attr("class", "states");
+        
+        //  Load state information to create individual state paths
+        d3.json("us-states.json", function (error, us) {
+            if (error) throw error;
+            statesGroup.selectAll("path")
+                .data(topojson.feature(us, us.objects.states).features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("class", "state");
+        }); 
+        
+        //  Adds cities to the SVG
+        usCities();
+        
+        //  D3 zoom behavior that calls the function zoomed when the 
+        //  zoom action is complete, i.e. for every zoom step
+        zoom = d3.zoom().on("zoom", zoomed);
+        
+        //  Append the zoom behavior to the map
+        map.call(zoom);
+        
+        //  Initiate the zoom to center the map to avoid jumping on first use
+        map.call( zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2) )
+      }
+      initiateMap();
+
+      function zoomed() {
+        //  Adjust the projection per the zoom event
+        projection.translate([d3.event.transform.x, d3.event.transform.y])
+                  .scale(width * d3.event.transform.k);
+        
+        //  Apply zoom to the states via the projection dependent path          
+        statesGroup.selectAll("path").attr("d", path);
+        
+        //  Adjust the cities based on zoom
+        zoomUsCities();
+      }
+
+      function usCities() {
+          //  1.  Add layer/group to map that is on top of the states but under 
+          //      additional layers.
+          //  2.  Add circle for city.
+          //  3.  Add text with city name.
+          
+        //  Create the cities group on the SVG
+        citiesGroup = map.append('g').attr('id', 'us-cities');
+
+        //  Load the city data from us-cities.json
+        d3.json("us-cities.json", function (error, cities) {
+          
+          //  Create a circle for each city with the data from us-cities
+          citiesGroup.selectAll('circle')
+              .data(cities, (d) => d.Id)
+              .enter().append('circle')
+                      .attr('opacity', (d) => d.ZoomLevel === 0 ? 1 : 0)
+                      .attr('class', 'city-point')
+                      .attr('r', 2)
+                      .attr('cx', (d) => projection([d.Longitude, d.Latitude])[0])
+                      .attr('cy', (d) => projection([d.Longitude, d.Latitude])[1]);
+          
+          // Generate the label i.e. city name for each city 
+          citiesGroup.selectAll('.city-label')
+              .data(cities, (d) => d.Id)
+              .enter().append('text')
+                      .attr('opacity', (d) => d.ZoomLevel === 0 ? 1 : 0)
+                      .attr('class', 'city-label')
+                      .attr('transform', (d) => 'translate(' + projection([d.Longitude, d.Latitude]) + ')')
+                      .attr('x', (d) => d.Longitude > -1 ? -6 : 6)
+                      .attr('dy', '.3em')
+                      .style("text-anchor", (d) => d.Longitude > -1 ? "end" : "start")
+                      .text((d) => d.AccentCity);
+        });
+      }
+
+      function zoomUsCities() {
+        //  Fetch the current scale from the projection to be used in the showCitiy function
+        var scale = parseInt(projection.scale());
+        
+        //  Select all city points (circles) for adjustment
+        citiesGroup.selectAll('circle').each(function (d, i) {
+          //  Hide or show each circle and change position
+          d3.select(this)
+            .attr('opacity', (d) => showCity(scale, d.ZoomLevel))
+            .attr('cx', (d) => projection([d.Longitude, d.Latitude])[0])
+            .attr('cy', (d) => projection([d.Longitude, d.Latitude])[1]);
+        });
+        
+        //  Select all text elements for adjustment 
+        citiesGroup.selectAll('text').each(function (d, i) {
+          //  Hide or show each label and change position
+          d3.select(this)
+            .attr('opacity', (d) => showCity(scale, d.ZoomLevel))
+            .attr('transform', (d) => 'translate(' + projection([d.Longitude, d.Latitude]) + ')');
+        });
+      }
+      
+      
+      function showCity(scale, zoomLevel) {
+        //  The visibility of each city is determined based on the current 
+        //  scale compared to the ZoomLevel (data from json)
+        
+        if (scale < 800) { return 0.0; }
+        if ((scale * 0.00041) > (zoomLevel * 1.5)) { return 1.0 }
+        if (zoomLevel === 0 && scale > 800) { return 1.0 }
+        
+        //  Default to hidden for unknown values
+        return 0.0;
+      }
+
+    </script>
+</body>
+</html>
